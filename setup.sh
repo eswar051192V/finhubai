@@ -27,6 +27,7 @@ step()  { printf "${BLUE}  →${NC} %s\n" "$*"; }
 SKIP_HEAVY_ML="${SKIP_HEAVY_ML:-0}"      # set to 1 to skip torch + transformers
 SKIP_NODE_BUILD="${SKIP_NODE_BUILD:-0}"  # set to 1 to skip npm run build
 SKIP_TESTS="${SKIP_TESTS:-0}"            # set to 1 to skip pytest at end
+OLLAMA_BG_PIDS=()                        # filled by Phase 4 if models need downloading
 
 phase "PHASE 0 — System prerequisites"
 
@@ -212,21 +213,37 @@ PY
 
 phase "PHASE 4 — Ollama local AI models (Phase 3 RAG + NLQ)"
 
-pgrep -x ollama >/dev/null || { log "Starting Ollama server..."; (ollama serve &>/dev/null &) ; sleep 3; }
-OLLAMA_MODELS=(
-    "llama3.1:8b"           # primary reasoning model
-    "nomic-embed-text"      # embedding model for RAG
-    "mistral:7b-instruct"   # fallback reasoning
-    "phi3:mini"             # lightweight fast model
-)
-for m in "${OLLAMA_MODELS[@]}"; do
-    if ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$m"; then
-        ok "Ollama model cached: $m"
-    else
-        log "Pulling Ollama model: $m (may take a while)"
-        ollama pull "$m" || warn "Failed to pull $m — retry later: ollama pull $m"
+SKIP_OLLAMA="${SKIP_OLLAMA:-0}"
+if [ "$SKIP_OLLAMA" = "1" ]; then
+    warn "SKIP_OLLAMA=1 → skipping model downloads (run later: ollama pull llama3.1:8b)"
+else
+    pgrep -x ollama >/dev/null || { log "Starting Ollama server..."; (ollama serve &>/dev/null &) ; sleep 3; }
+
+    # Essential models only; add extras later with: ollama pull <model>
+    OLLAMA_REQUIRED=("llama3.1:8b" "nomic-embed-text")
+    OLLAMA_OPTIONAL=("mistral:7b-instruct" "phi3:mini")
+
+    PULL_PIDS=()
+    PULL_NAMES=()
+    for m in "${OLLAMA_REQUIRED[@]}" "${OLLAMA_OPTIONAL[@]}"; do
+        if ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$m"; then
+            ok "Ollama model cached: $m"
+        else
+            log "Pulling Ollama model in background: $m"
+            (ollama pull "$m" && printf "${GREEN}  ✓${NC} %s downloaded\n" "$m" || \
+                printf "${YELLOW}[setup]${NC} %s pull failed — retry: ollama pull %s\n" "$m" "$m") &
+            PULL_PIDS+=($!)
+            PULL_NAMES+=("$m")
+        fi
+    done
+
+    if [ ${#PULL_PIDS[@]} -gt 0 ]; then
+        log "Downloading ${#PULL_PIDS[@]} model(s) in parallel: ${PULL_NAMES[*]}"
+        log "Continuing setup while models download..."
+        # Store PIDs so we can wait at the end of setup
+        OLLAMA_BG_PIDS=("${PULL_PIDS[@]}")
     fi
-done
+fi
 
 phase "PHASE 5 — Frontend (Next.js) install + build"
 
@@ -300,6 +317,20 @@ if [ "$SKIP_UNIVERSE" != "1" ]; then
     fi
 else
     warn "SKIP_UNIVERSE=1 → skipping big universe download (Markets UI will show only the curated lists until you hit 'Load full universe' in the UI)"
+fi
+
+# ── Wait for background Ollama model downloads ────────────────────────────
+if [ "${#OLLAMA_BG_PIDS[@]}" -gt 0 ]; then
+    log "Waiting for Ollama model downloads to finish..."
+    OLLAMA_FAIL=0
+    for pid in "${OLLAMA_BG_PIDS[@]}"; do
+        wait "$pid" 2>/dev/null || OLLAMA_FAIL=$((OLLAMA_FAIL + 1))
+    done
+    if [ "$OLLAMA_FAIL" -gt 0 ]; then
+        warn "$OLLAMA_FAIL model download(s) failed — retry later: ollama pull <model>"
+    else
+        ok "All Ollama models downloaded"
+    fi
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────

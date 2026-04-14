@@ -34,6 +34,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   india_mf: "MF",
   india_mf_all: "MF+",
   india_bonds: "BD",
+  india_bonds_all: "BD+",
   india_index: "IX",
   india_fno: "F&O",
   energy: "OIL",
@@ -41,10 +42,12 @@ const CATEGORY_ICONS: Record<string, string> = {
   forex: "FX",
   forex_all: "FX+",
   us_equity: "US",
+  us_equity_all: "US+",
   us_options: "OPT",
   crypto: "BTC",
   crypto_all: "₿+",
   us_bonds: "UST",
+  us_bonds_all: "UST+",
   us_futures: "FUT",
   real_estate: "RE",
   real_estate_all: "REIT",
@@ -55,14 +58,35 @@ const PAGE_SIZE = 50;
 
 // Visual style per tag family so index badges stand out
 function tagClass(tag: string): string {
+  // India indices
   if (tag.startsWith("NIFTY")) return "bg-blue-500/15 text-blue-300 border-blue-500/30";
   if (tag === "SENSEX" || tag.startsWith("BSE")) return "bg-orange-500/15 text-orange-300 border-orange-500/30";
   if (tag === "FNO") return "bg-purple-500/15 text-purple-300 border-purple-500/30";
+  // US indices
+  if (tag === "SP500" || tag === "SP_MIDCAP400" || tag === "SP_SMALLCAP600") return "bg-indigo-500/15 text-indigo-300 border-indigo-500/30";
+  if (tag === "NASDAQ100" || tag === "NASDAQ") return "bg-sky-500/15 text-sky-300 border-sky-500/30";
+  if (tag === "DOW30") return "bg-violet-500/15 text-violet-300 border-violet-500/30";
+  if (tag === "RUSSELL2000") return "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30";
+  // GICS sectors
+  if (tag.startsWith("GICS_")) return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
+  // REITs / ETFs / Crypto / Physical / Forex
   if (tag === "REIT" || tag === "INVIT") return "bg-amber-500/15 text-amber-300 border-amber-500/30";
   if (tag === "ETF") return "bg-cyan-500/15 text-cyan-300 border-cyan-500/30";
   if (tag === "CRYPTO" || tag === "TOP10") return "bg-yellow-500/15 text-yellow-300 border-yellow-500/30";
   if (tag === "PHYSICAL") return "bg-rose-500/15 text-rose-300 border-rose-500/30";
   if (tag === "FOREX") return "bg-teal-500/15 text-teal-300 border-teal-500/30";
+  // Bond families
+  if (tag === "TREASURY" || tag === "GSEC" || tag === "YIELD") return "bg-green-500/15 text-green-300 border-green-500/30";
+  if (tag === "SGB" || tag === "GOLD_BOND") return "bg-yellow-600/15 text-yellow-400 border-yellow-600/30";
+  if (tag === "BOND_ETF" || tag === "AGGREGATE") return "bg-lime-500/15 text-lime-300 border-lime-500/30";
+  if (tag === "HY" || tag === "BANK_LOAN") return "bg-red-500/15 text-red-300 border-red-500/30";
+  if (tag === "IG" || tag === "CORPORATE") return "bg-blue-600/15 text-blue-300 border-blue-600/30";
+  if (tag === "MUNI" || tag === "TAX_EXEMPT") return "bg-pink-500/15 text-pink-300 border-pink-500/30";
+  if (tag === "TIPS" || tag === "INFLATION") return "bg-orange-600/15 text-orange-300 border-orange-600/30";
+  if (tag === "MBS") return "bg-stone-500/20 text-stone-300 border-stone-500/30";
+  if (tag === "EM") return "bg-rose-600/15 text-rose-300 border-rose-600/30";
+  if (tag === "PREFERRED" || tag === "CONVERTIBLE") return "bg-purple-600/15 text-purple-300 border-purple-600/30";
+  if (tag === "SHORT" || tag === "INTERMEDIATE" || tag === "LONG") return "bg-slate-500/15 text-slate-300 border-slate-500/30";
   return "bg-muted/50 text-muted-foreground border-border";
 }
 
@@ -260,9 +284,11 @@ export default function MarketsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Markets</h1>
           <p className="text-muted-foreground">
-            Live prices across India (NSE/BSE equity, MFs, F&amp;O, REITs),
-            US, energy, commodities, crypto, forex, bonds, metals & real estate
-            — with Nifty 50 / Sensex / sectoral index tags.
+            Live prices across India (NSE/BSE equity, MFs, F&amp;O, REITs, G-Secs,
+            SGBs, Bharat Bond) and USA (NYSE/NASDAQ/AMEX equity, Treasuries,
+            TIPS, muni, IG/HY corporate, MBS, EM debt), plus energy, commodities,
+            crypto, forex, metals & real estate — tagged by Nifty 50 / Sensex /
+            S&amp;P 500 / Nasdaq 100 / Dow 30 / GICS sector / bond duration.
           </p>
         </div>
         <div className="flex items-center gap-2">
