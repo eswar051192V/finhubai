@@ -1,0 +1,22 @@
+# FinanceLab — reverse proxy for Cloudflare Tunnel or LAN testing.
+# Usage (example): caddy run --config deploy/Caddyfile
+# Adjust upstream ports if your Next.js or FastAPI ports differ.
+
+{
+	# For local TLS experiments only; Cloudflare Tunnel does not require local TLS.
+	# auto_https off
+}
+
+:8443 {
+	encode gzip
+
+	# API → FastAPI (uvicorn)
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# App → Next.js (production: `npm run build && npm run start` on 3000)
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
